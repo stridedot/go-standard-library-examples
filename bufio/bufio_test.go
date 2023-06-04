@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -262,4 +264,216 @@ func TestReaderWriteTo(t *testing.T) {
 	if n != int64(w.Len()) {
 		t.Fatalf("Want n=%d, got n!=%d\n", w.Len(), w.Len())
 	}
+}
+
+// TestScannerScan 测试扫描数据
+func TestScannerScan(t *testing.T) {
+	scanner := bufio.NewScanner(strings.NewReader("gopher"))
+	for scanner.Scan() {
+		if len(scanner.Bytes()) != 6 {
+			t.Fatalf("Scan wrong length")
+		}
+	}
+}
+
+// TestScannerWithoutBuffer 测试默认最大缓冲
+// s.Err() return token too long
+func TestScannerWithoutBuffer(t *testing.T) {
+	text := strings.Repeat("x", 2*bufio.MaxScanTokenSize)
+	s := bufio.NewScanner(strings.NewReader(text + "\n"))
+	for s.Scan() {
+		if text != s.Text() {
+			t.Fatalf("Scan got incorrect token of length %d", len(text))
+		}
+	}
+	if s.Err() != nil {
+		t.Fatalf("after scan: %v", s.Err())
+	}
+}
+
+// Scanner.Buffer 方法可以重置缓冲区的最大长度
+// 默认最大值是 bufio.MaxScanTokenSize
+func TestScannerBuffer(t *testing.T) {
+	text := strings.Repeat("x", 2*bufio.MaxScanTokenSize)
+	s := bufio.NewScanner(strings.NewReader(text + "\n"))
+	s.Buffer(make([]byte, 100), 3*bufio.MaxScanTokenSize)
+	for s.Scan() {
+		if text != s.Text() {
+			t.Fatalf("Scan got incorrect token of length %d", len(text))
+		}
+	}
+	if s.Err() != nil {
+		t.Fatalf("after scan: %v", s.Err())
+	}
+}
+
+// TestScannerSplit 测试按单词分割
+func TestScannerSplit(t *testing.T) {
+	var input = "Now is the winter of our discontent,\nMade glorious summer by this sun of York.\n"
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	scanner.Split(bufio.ScanWords)
+	for scanner.Scan() {
+		t.Logf("scan = %v\n", scanner.Text())
+	}
+	if scanner.Err() != nil {
+		t.Fatalf("reading error: %v\n", scanner.Err())
+	}
+}
+
+// TestCustomSplit 测试自定义分割函数
+func TestCustomSplit(t *testing.T) {
+	input := "1234 5678 12345 67901234567890"
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		advance, token, err = bufio.ScanWords(data, atEOF)
+		if err == nil && token != nil {
+			// 转为64位，会输出 67901234567890
+			// 转为32位，不会输出 67901234567890
+			_, err = strconv.ParseInt(string(token), 10, 64)
+		}
+		return
+	}
+	scanner.Split(split)
+	for scanner.Scan() {
+		t.Logf(scanner.Text())
+	}
+
+	if scanner.Err() != nil {
+		t.Fatalf("Invalid input: %v", scanner.Err())
+	}
+}
+
+func TestNewWriter(t *testing.T) {
+	w := bufio.NewWriter(os.Stdout)
+	w.WriteString("hello,")
+	w.WriteString("world!")
+	w.Flush()
+}
+
+// TestNewWriterSize 测试返回指定长度的 writer
+func TestNewWriterSize(t *testing.T) {
+	w := bufio.NewWriterSize(bytes.NewBuffer([]byte("你好世界")), 6)
+	if w.Size() != 6 {
+		t.Fatalf("Want 6, got %d", w.Size())
+	}
+}
+
+// TestWriterAvailable 测试未使用的 buffer 长度
+func TestWriterAvailable(t *testing.T) {
+	w := bufio.NewWriter(os.Stdout)
+	if w.Available() != 4096 {
+		t.Fatalf("wrong available lenth %d", w.Available())
+	}
+
+	_, _ = w.WriteString("你好世界")
+
+	if w.Available() != 4084 {
+		t.Fatalf("Got error length %d", w.Available())
+	}
+
+	_ = w.Flush()
+}
+
+// TestWriterFlush 测试输出到终端
+// 如果需要输出，NewWriter 必不能是 nil
+func TestWriterFlush(t *testing.T) {
+	str := strings.Repeat("x", 1<<10)
+	bw := bufio.NewWriter(io.Discard)
+	bw.WriteString(str)
+	bw.Flush()
+}
+
+// TestWriterAvailableBuffer 测试 writer 向外暴露一个空的 []byte
+func TestWriterAvailableBuffer(t *testing.T) {
+	w := bufio.NewWriter(os.Stdout)
+	for _, i := range []int64{1, 2, 3, 4} {
+		b := w.AvailableBuffer()
+		b = strconv.AppendInt(b, i, 10)
+		b = append(b, ' ')
+		_, _ = w.Write(b)
+	}
+	_ = w.Flush()
+}
+
+// TestWriterBuffered 测试已写入的字节数
+func TestWriterBuffered(t *testing.T) {
+	w := bufio.NewWriter(os.Stdout)
+	n, _ := w.WriteString("你好")
+	if w.Buffered() != n {
+		t.Fatalf("Want 6, got %d", w.Buffered())
+	}
+	if w.Available() != 4090 {
+		t.Fatalf("Want 4090, got %d", w.Available())
+	}
+}
+
+// TestWriterReadFrom 测试从 reader 中读取数据到 writer
+func TestWriterReadFrom(t *testing.T) {
+	w := bufio.NewWriter(os.Stdout)
+	w.ReadFrom(strings.NewReader("abcdef"))
+	w.Flush()
+}
+
+// TestWriterReset
+// 重置放弃任何未刷新的缓冲数据，清除任何错误，并重置 w 以将其输出写入 buf2。
+// 注意：重置时是将 buf1 重置为 buf2
+func TestWriterReset(t *testing.T) {
+	var buf1, buf2 strings.Builder
+
+	w := bufio.NewWriter(&buf1)
+	_, _ = w.WriteString("foo")
+
+	w.Reset(&buf2) // and not flushed
+	_, _ = w.WriteString("bar")
+	_ = w.Flush()
+
+	if buf1.String() != "" {
+		t.Errorf("buf1 = %q; want empty", buf1.String())
+	}
+	if buf2.String() != "bar" {
+		t.Errorf("buf2 = %q; want bar", buf2.String())
+	}
+}
+
+// TestWriterWrite 测试写入
+func TestWriterWrite(t *testing.T) {
+	buf := []byte("hello world")
+	writer := bufio.NewWriter(os.Stdout)
+	n, err := writer.Write(buf)
+	if n < len(buf) {
+		t.Fatalf("Want %d, got %d", len(buf), n)
+	}
+	if err != nil {
+		t.Fatalf("Got err: %v", err)
+	}
+}
+
+// TestWriterWriteByte 写入单个字节
+func TestWriterWriteByte(t *testing.T) {
+	writer := bufio.NewWriter(os.Stdout)
+	err := writer.WriteByte('a')
+	if err != nil {
+		t.Fatalf("Got err: %v\n", err)
+	}
+	_ = writer.Flush()
+}
+
+// TestWriterWriteRune 写入单个 utf-8 编码的字符
+func TestWriterWriteRune(t *testing.T) {
+	writer := bufio.NewWriter(os.Stdout)
+	_, err := writer.WriteRune('你')
+	if err != nil {
+		t.Fatalf("Got err: %v\n", err)
+	}
+	_ = writer.Flush()
+}
+
+// TestWriterWriteString 测试写入字符串
+func TestWriterWriteString(t *testing.T) {
+	writer := bufio.NewWriter(os.Stdout)
+	_, err := writer.WriteString("你好世界")
+	if err != nil {
+		t.Fatalf("Got err: %v\n", err)
+	}
+	_ = writer.Flush()
 }
