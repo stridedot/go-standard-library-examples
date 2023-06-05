@@ -5,8 +5,7 @@ import (
 )
 
 func TestAppend(t *testing.T) {
-	s := []string{"" +
-		"hello "}
+	s := []string{"hello "}
 	s = append(s, "world ")
 	t.Logf("s = %s\n", s)
 
