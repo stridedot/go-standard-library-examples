@@ -711,3 +711,31 @@ func TestReaderSeek(t *testing.T) {
 		t.Fatalf("Want f, got %s\n", string(c))
 	}
 }
+
+// TestReaderUnreadByte 取消最后一次读取的 byte
+func TestReaderUnreadByte(t *testing.T) {
+	b := bytes.NewReader([]byte("123456"))
+	b.ReadByte()
+	b.UnreadByte()
+	if b.Size() != 6 {
+		t.Fatalf("Want size 6, got %d", b.Size())
+	}
+}
+
+// TestReaderUnreadRune 取消最后一次读取的 rune
+func TestReaderUnreadRune(t *testing.T) {
+	b := bytes.NewReader([]byte("你好世界"))
+	b.ReadRune()
+	b.UnreadRune()
+	if b.Size() != 12 {
+		t.Fatalf("Want size 12, got %d", b.Size())
+	}
+}
+
+// TestReaderWriteTo 将数据写入 w
+func TestReaderWriteTo(t *testing.T) {
+	r := bytes.NewReader([]byte("你好世界"))
+	b := new(bytes.Buffer)
+	r.WriteTo(b)
+	t.Logf("b.String = %s\n", b.String())
+}
