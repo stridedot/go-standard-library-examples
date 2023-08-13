@@ -55,6 +55,10 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
+	// go test -v flag/flag_test.go -run testMain -arg9=10 -arg10=11 hello
+	// 返回 1
+	println("The remaining args count is ", flag.NArg())
+
 	println("The value of 'arg1': ", *boolArgPtr)
 	println("The value of 'arg2': ", boolVarArg)
 	println("The value of 'arg3': ", *durationArgPtr)
@@ -66,6 +70,7 @@ func TestMain(m *testing.M) {
 	println("The value of 'arg8': ", intVarArg)
 	println("The value of 'arg9': ", *int64ArgPtr)
 	println("The value of 'arg10': ", int64VarArg)
+	println("The number of flags is ", flag.NFlag())
 }
 
 // 测试使用自定义命令
