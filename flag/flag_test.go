@@ -3,6 +3,7 @@ package flag_test
 import (
 	"flag"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"testing"
@@ -53,6 +54,19 @@ func TestMain(m *testing.M) {
 	var int64VarArg int64
 	flag.Int64Var(&int64VarArg, "arg10", 0, "This is a int64 argument")
 
+	stringArgPtr := flag.String("arg11", "default1", "This is a string argument")
+
+	var stringVarArg string
+	flag.StringVar(&stringVarArg, "arg12", "default2", "This is a string argument")
+
+	var ip net.IP
+	flag.TextVar(&ip, "ip", net.IPv4(192, 168, 0, 100), "`IP address` to parse")
+
+	uint64ArgPtr := flag.Uint64("arg13", 0, "This is a uint argument")
+
+	var uint64VarArg uint64
+	flag.Uint64Var(&uint64VarArg, "arg14", 0, "This is a uint argument")
+
 	flag.Parse()
 
 	// go test -v flag/flag_test.go -run testMain -arg9=10 -arg10=11 hello
@@ -71,6 +85,15 @@ func TestMain(m *testing.M) {
 	println("The value of 'arg9': ", *int64ArgPtr)
 	println("The value of 'arg10': ", int64VarArg)
 	println("The number of flags is ", flag.NFlag())
+	println("The flags are parsed:", flag.Parsed())
+	//flag.PrintDefaults()
+	println("Set the value of arg1 to true", flag.Set("arg1", "true"))
+	println("The value of 'arg1': ", *boolArgPtr)
+	println("The value of 'arg11': ", *stringArgPtr)
+	println("The value of 'arg12': ", stringVarArg)
+	println("The value of 'ip': ", ip)
+	println("The value of 'arg13': ", *uint64ArgPtr)
+	println("The value of 'arg14': ", uint64VarArg)
 }
 
 // 测试使用自定义命令
