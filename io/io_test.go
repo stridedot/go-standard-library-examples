@@ -173,3 +173,95 @@ func TestOffsetWriterWriteAt(t *testing.T) {
 
 	offWriter.WriteAt([]byte("hello WORLD"), 2)
 }
+
+// 测试 io.Pipe 拆分成了 PipeReader 和 PipeWriter 暴露出去。
+// PipeReader.Read() 方法写入数据，PipeWriter.Write() 读取数据。由于其实现了接口 io.ReadCloser 和 io.WriteCloser 。所以可以使用更高层的工具函数来操作它们。
+// 对于 PipeReader ，可以使用 bytes.Buffer.ReadFrom 或者 bufio.NewScanner 。
+// 对于 PipeWriter 可以使用 fmt.Fprintf() 或者 bufio.NewWriter
+func TestIOPipe(t *testing.T) {
+	r, w := io.Pipe()
+	defer r.Close()
+
+	go func() {
+		_, err := w.Write([]byte("hello world"))
+		defer w.Close()
+		if err != nil {
+			t.Fatalf("w.Write error: %v", err)
+		}
+	}()
+
+	b := make([]byte, 10)
+	n, err := r.Read(b)
+	if err != nil {
+		t.Logf("r.Read error: %v", err)
+	}
+	t.Logf("b = %s", b[:n])
+}
+
+// 测试 io.ReadCloser
+func TestIOReadCloser(t *testing.T) {
+	r := strings.NewReader("hello world")
+	rc := io.NopCloser(r)
+	defer rc.Close()
+}
+
+// 测试 io.LimitedReader
+func TestIOLimitedReader(t *testing.T) {
+	r := bytes.NewReader([]byte("test io reader"))
+	lr := io.LimitReader(r, 20)
+
+	var total int
+	b := make([]byte, 5)
+
+	for {
+		n, err := lr.Read(b)
+		if err == io.EOF {
+			t.Log("Read EOF ", total)
+			break
+		}
+		if err != nil {
+			t.Fatalf("lr.Read error: %v", err)
+		}
+
+		t.Logf("b = %s", b[:n])
+		total += n
+	}
+}
+
+// 测试 io.MultiReader.Read
+func TestIOMultiReader(t *testing.T) {
+	r1 := bytes.NewReader([]byte("test io r1"))
+	r2 := bytes.NewReader([]byte("test io r2"))
+	mr := io.MultiReader(r1, r2)
+
+	var n, total int
+	var err error
+	b := make([]byte, 5)
+
+	for {
+		n, err = mr.Read(b)
+		if err == io.EOF {
+			t.Log("Read EOF ", total)
+			break
+		}
+		if err != nil {
+			t.Fatalf("mr.Read error: %v", err)
+		}
+		t.Logf("b = %s", b[:n])
+		total += n
+	}
+}
+
+// 测试 io.MultiReader.WriteTo
+// 需要先将 io.MultiReader 转换成 io.WriterTo 接口
+func TestIOMultiReaderWriteTo(t *testing.T) {
+	r1 := bytes.NewReader([]byte("test io r1"))
+	r2 := bytes.NewReader([]byte("test io r2"))
+	mr := io.MultiReader(r1, r2)
+
+	mr.(io.WriterTo).WriteTo(os.Stdout)
+}
+
+func TestIOTeeReader(t *testing.T) {
+
+}
