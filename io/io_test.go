@@ -2,6 +2,7 @@ package io_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -262,6 +263,124 @@ func TestIOMultiReaderWriteTo(t *testing.T) {
 	mr.(io.WriterTo).WriteTo(os.Stdout)
 }
 
+// 测试 io.TeeReader
 func TestIOTeeReader(t *testing.T) {
+	r := bytes.NewReader([]byte("test io reader"))
+	tr := io.TeeReader(r, os.Stdout)
 
+	b := make([]byte, 5)
+	_, err := tr.Read(b)
+	if err != nil {
+		t.Fatalf("tr.Read error: %v", err)
+	}
+
+	p, err := io.ReadAll(tr)
+	if err != nil {
+		t.Fatalf("io.ReadAll error: %v", err)
+	}
+	t.Logf("b = %s", p)
+}
+
+func testIOTeeReaderRead(t *testing.T) {
+	reader, _ := os.Open("test.txt")
+	writer, _ := os.Create("dst.txt")
+	teeReader := io.TeeReader(reader, writer)
+	var n, total int
+	var err error
+	p := make([]byte, 20)
+	for {
+		n, err = teeReader.Read(p)
+		total = total + n
+		if err == nil {
+			fmt.Println("Read and write value", string(p[0:n]))
+			fmt.Println("Read and write count", total)
+		}
+		if err == io.EOF {
+			fmt.Println("Read and write end total", total)
+			break
+		}
+	}
+}
+
+// 测试 io.PipeReader.Read
+func TestIOSectionReaderRead(t *testing.T) {
+	r, _ := os.Open("test.txt")
+	sr := io.NewSectionReader(r, 6, 20)
+
+	t.Logf("sr.Size() = %d", sr.Size())
+
+	var n, total int
+	var err error
+	b := make([]byte, 10)
+
+	for {
+		n, err = sr.Read(b)
+		if err == io.EOF {
+			t.Logf("Read EOF, total size = %d", total)
+			break
+		}
+		if err != nil {
+			t.Fatalf("sr.Read error: %v", err)
+		}
+		total += n
+
+		t.Logf("b = %q", b[:n])
+	}
+}
+
+// 测试 io.PipeReader.ReadAt
+// ReadAt 从指定位置开始读取数据，而不是从当前位置开始读取数据
+func TestIOSectionReaderReadAt(t *testing.T) {
+	r, _ := os.Open("test.txt")
+	sr := io.NewSectionReader(r, 6, 20)
+
+	b := make([]byte, 10)
+	n, err := sr.ReadAt(b, 5)
+	if err != nil {
+		t.Fatalf("sr.ReadAt error: %v", err)
+	}
+	t.Logf("b = %q", b[:n])
+}
+
+// 测试 io.PipeReader.Seek
+// 参数：
+//   - offset 偏移量
+//   - whence 设定选项
+//     0:读取起始点，
+//     1:当前读取点，
+//     2:结束点(不好用)，
+//     其他：将抛出Seek: invalid whence异常
+//
+// 返回值：
+//   - 当前读取点相对读取起始点的偏移量
+func TestIOSectionReaderSeek(t *testing.T) {
+	r, _ := os.Open("test.txt")
+	sr := io.NewSectionReader(r, 6, 20)
+
+	off, err := sr.Seek(0, io.SeekStart)
+	if err != nil {
+		t.Fatalf("sr.Seek error: %v", err)
+	}
+	t.Logf("off = %d", off)
+
+	b1 := make([]byte, 10)
+	n, err := sr.Read(b1)
+	if err != nil {
+		t.Fatalf("sr.Read error: %v", err)
+	}
+	t.Logf("b1 = %q", b1[:n])
+
+	// 从当前位置向后移动 5 个字节
+	off, err = sr.Seek(5, io.SeekCurrent)
+	if err != nil {
+		t.Fatalf("sr.Seek error: %v", err)
+	}
+	t.Logf("off = %d", off)
+
+	b := make([]byte, 10)
+	n, err = sr.Read(b)
+	if err != nil {
+		t.Fatalf("sr.Read error: %v", err)
+	}
+	t.Logf("b = %q", b[:n])
 }
