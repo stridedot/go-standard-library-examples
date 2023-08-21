@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net"
 	"testing"
+	"time"
 )
 
 // 测试net.JoinHostPort
@@ -130,4 +131,54 @@ func TestNetBuffers(t *testing.T) {
 	}
 
 	t.Logf("read: %s", buf[:n])
+}
+
+// 测试net.Dial
+func TestNetDialer(t *testing.T) {
+	conn, err := net.Dial("tcp", "www.163.com:80")
+	if err != nil {
+		t.Fatal("Dial error:", err)
+	}
+	defer conn.Close()
+
+	t.Logf("conn: %#v", conn)
+}
+
+// 测试net.DialTimeout
+func TestNetDialerTimeout(t *testing.T) {
+	timeout := time.Duration(10) * time.Second
+	conn, err := net.DialTimeout("tcp", "www.google.com:80", timeout)
+	if err != nil {
+		t.Fatal("DialTimeout error:", err)
+	}
+	defer conn.Close()
+
+	t.Logf("conn: %#v", conn)
+}
+
+// todo 测试net.Dialer
+func TestNetDialerFileConn(t *testing.T) {
+
+}
+
+// 测试net.IPv4
+func TestNetIPIPv4(t *testing.T) {
+	ip := net.IPv4(127, 0, 0, 1)
+	t.Logf("ip: %v", ip)
+}
+
+// 测试net.IPv4
+// 使用本地解析器解析域名，返回IP地址
+func TestNetIPLookupIP(t *testing.T) {
+	ips, err := net.LookupIP("www.baidu.com")
+	if err != nil {
+		t.Fatal("LookupIP error:", err)
+	}
+
+	t.Logf("ips: %v", ips)
+}
+
+func TestNetIPParseIP(t *testing.T) {
+	ip := net.ParseIP("127.0.0.1")
+	t.Logf("ip: %v", ip)
 }
