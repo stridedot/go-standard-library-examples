@@ -26,7 +26,7 @@ func TestNetLookupAddr(t *testing.T) {
 
 // 测试net.LookupCNAME
 func TestNetLookupCNAME(t *testing.T) {
-	cname, err := net.LookupCNAME("any.weizhe.net")
+	cname, err := net.LookupCNAME("www.baidu.com")
 	if err != nil {
 		t.Fatal("LookupCNAME error:", err)
 	}
@@ -35,7 +35,7 @@ func TestNetLookupCNAME(t *testing.T) {
 }
 
 func TestNetLookupHost(t *testing.T) {
-	addrs, err := net.LookupHost("github.com")
+	addrs, err := net.LookupHost("www.baidu.com")
 	if err != nil {
 		t.Fatal("LookupHost error:", err)
 	}
@@ -181,4 +181,91 @@ func TestNetIPLookupIP(t *testing.T) {
 func TestNetIPParseIP(t *testing.T) {
 	ip := net.ParseIP("127.0.0.1")
 	t.Logf("ip: %v", ip)
+}
+
+// 测试返回IP的默认掩码
+func TestNetIPDefaultMask(t *testing.T) {
+	ip := net.ParseIP("127.0.0.1")
+	t.Logf("ip: %v", ip.DefaultMask())
+}
+
+// 测试 net.IP.Equal
+func TestNetIPEqual(t *testing.T) {
+	ip := net.IPv4(127, 0, 0, 1)
+	t.Logf("ip: %v", ip.Equal(net.ParseIP("127.0.0.1")))
+}
+
+// 测试net.IP.IsGlobalUnicast
+func TestNetIsGlobalUnicast(t *testing.T) {
+	ipv4Private := net.ParseIP("10.255.0.0")
+	t.Logf("ipv4Private: %v", ipv4Private.IsGlobalUnicast())
+}
+
+// 测试返回端点的地址
+func TestResolveIPAddr(t *testing.T) {
+	addr, err := net.ResolveIPAddr("ip", "www.baidu.com")
+	if err != nil {
+		t.Fatal("ResolveIPAddr error:", err)
+	}
+
+	t.Logf("addr: %v", addr)
+	t.Logf("addr.Network(): %v", addr.Network())
+	t.Logf("addr.String(): %v", addr.String())
+}
+
+// 测试net.DialIP
+func TestNetDialIP(t *testing.T) {
+	addr, err := net.ResolveIPAddr("ip", "www.baidu.com")
+	if err != nil {
+		t.Fatal("ResolveIPAddr error:", err)
+	}
+	ipconn, err := net.DialIP("ip4:icmp", nil, addr)
+	if err != nil {
+		t.Logf("DialIP error: %v", err)
+	}
+
+	t.Logf("ipconn: %#v", ipconn)
+}
+
+// 参数列表:
+//
+// - ones 网络字符串
+// - bits 服务名
+//
+// 返回列表:
+//
+// - IPMask 掩码结构
+//
+// [百度百科 - CIDR](http://baike.baidu.com/view/4217886.htm)
+//
+// 返回CIDR规范的掩码
+// ones 必须 大于0 小于 bits
+// bits 必须为 4(IPv4的字节数)或16(IPv6的字节数)的8倍
+func TestNetCIDRMask(t *testing.T) {
+	t.Logf("mask: %v", net.CIDRMask(24, 32))
+}
+
+// 返回 IPv4 掩码
+func TestNetIPMask(t *testing.T) {
+	ipmask := net.IPv4Mask(255, 255, 255, 0)
+	t.Logf("ipmask: %v", ipmask)
+	t.Logf("ipmask.String(): %v", ipmask.String())
+	ones, bits := ipmask.Size()
+	t.Logf("ipmask.Size(): %v, %v", ones, bits)
+}
+
+// 测试net.IPNet
+// IPNet 表示一个IP网络
+// ipnet.Contains(ip) 判断ip是否在ipnet中
+// ipnet.Network() 返回此IP网络名称  "ip+net"
+// ipnet.String() 返回IP网络的字符串形式
+func TestIPNet(t *testing.T) {
+	ip := net.IPv4(127, 0, 0, 1)
+	ipnet := net.IPNet{
+		IP:   ip,
+		Mask: ip.DefaultMask(),
+	}
+	t.Logf("ipnet.Contains(ip): %v", ipnet.Contains(ip))
+	t.Logf("ipnet.Network(): %v", ipnet.Network())
+	t.Logf("ipnet.String(): %v", ipnet.String())
 }
