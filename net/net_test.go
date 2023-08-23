@@ -2,6 +2,7 @@ package net_test
 
 import (
 	"bytes"
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -214,6 +215,9 @@ func TestResolveIPAddr(t *testing.T) {
 }
 
 // 测试net.DialIP
+// laddr 是本地地址，raddr 是远程地址
+// 如果 laddr 为 nil，系统会自动选择本地地址
+// 如果 raddr 为 nil，系统会假定是地址
 func TestNetDialIP(t *testing.T) {
 	addr, err := net.ResolveIPAddr("ip", "www.baidu.com")
 	if err != nil {
@@ -268,4 +272,43 @@ func TestIPNet(t *testing.T) {
 	t.Logf("ipnet.Contains(ip): %v", ipnet.Contains(ip))
 	t.Logf("ipnet.Network(): %v", ipnet.Network())
 	t.Logf("ipnet.String(): %v", ipnet.String())
+}
+
+// 测试net.ListenConfig
+func TestListenConfig(t *testing.T) {
+	lc := net.ListenConfig{KeepAlive: 1000 * time.Second}
+	l, err := lc.Listen(context.Background(), "tcp", ":8080")
+	if err != nil {
+		t.Fatal("Listen error:", err)
+	}
+	defer l.Close()
+
+	t.Logf("l: %#v", l)
+}
+
+// 测试 net.LookupMX	返回域名的MX记录
+func TestLookupMX(t *testing.T) {
+	mx, err := net.LookupMX("baidu.com")
+	if err != nil {
+		t.Fatal("LookupMX error:", err)
+	}
+
+	t.Logf("mx: %v", mx)
+}
+
+// net.DialTCP 的作用同 DialIP，但是网络协议是 TCP
+func TestNetDialTcp(t *testing.T) {
+	ip := net.IPv4(127, 0, 0, 1)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", ip.String()+":8080")
+	if err != nil {
+		t.Fatal("ResolveTCPAddr error:", err)
+	}
+
+	conn, err := net.DialTCP("tcp", tcpAddr, tcpAddr)
+	if err != nil {
+		t.Fatal("DialTCP error:", err)
+	}
+	defer conn.Close()
+
+	t.Logf("conn: %#v", conn)
 }
