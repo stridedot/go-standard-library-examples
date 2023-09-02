@@ -695,3 +695,169 @@ func TestOSSeek(t *testing.T) {
 	n, _ = f.Read(b)
 	t.Logf("Seek: %d, %s", ret, string(b[:n]))
 }
+
+// os.SetReadDeadline 设置文件的读取截至时间
+func TestOSSetReadline(t *testing.T) {
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Fatalf("Open file failed")
+	}
+	defer file.Close()
+
+	err = file.SetReadDeadline(time.Now().Add(3 * time.Second))
+	if err != nil {
+		t.Fatalf("Set read deadline error, err := %v", err)
+	}
+
+	time.Sleep(5)
+	b := make([]byte, 63350)
+	n, err := file.Read(b)
+	if err != nil {
+		t.Fatalf("Read file failed, err = %v", err)
+	}
+	t.Logf("read content: %s", b[:n])
+}
+
+// os.SetWriteDeadline 设置文件的写入截至时间
+func TestOSSetWriteDeadline(t *testing.T) {
+	file, err := os.Create("test1.txt")
+	if err != nil {
+		t.Fatalf("Create file failed, err = %v", err)
+	}
+	defer file.Close()
+
+	err = file.SetWriteDeadline(time.Now().Add(3 * time.Second))
+	if err != nil {
+		t.Fatalf("Set write deadline failed, err = %v", err)
+	}
+}
+
+// os.SetDeadLine 设置文件的读写截至时间，
+// 相当于同时调用 SetReadDeadline 和 SetWriteDeadline
+func TestOSSetDeadline(t *testing.T) {
+	file, err := os.Create("test2.txt")
+	if err != nil {
+		t.Fatalf("Create file failed, err = %v", err)
+	}
+	defer file.Close()
+
+	err = file.SetDeadline(time.Now().Add(3 * time.Second))
+	if err != nil {
+		t.Fatalf("Set deadline err, err = %v", err)
+	}
+}
+
+// os.Stat 返回描述文件的 FileInfo 结构
+func TestOSStat(t *testing.T) {
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Fatalf("Open file failed, err = %v", err)
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		t.Fatalf("Return fileinfo err, err = %v", err)
+	}
+
+	t.Logf("fileInfo = %#v", fileInfo)
+}
+
+// 将 file 内存里的内容写到磁盘
+// 一般不用调用这个方法
+func TestOSSync(t *testing.T) {
+	file, err := os.Create("test1.txt")
+	if err != nil {
+		t.Fatalf("Create file failed, err = %v", err)
+	}
+	defer file.Close()
+
+	b := []byte("台风来了，五运全停，明天不上班")
+	_, err = file.Write(b)
+	if err != nil {
+		t.Fatalf("Write to file error, err = %v", err)
+	}
+	file.Sync()
+	file.SyscallConn()
+}
+
+// f.SyscallConn 返回原始文件
+func TestOSSyscallConn(t *testing.T) {
+	file, err := os.Open("test.txt")
+	if err != nil {
+		t.Fatalf("Open file failed, err = %v", err)
+	}
+
+	rconn, err := file.SyscallConn()
+	if err != nil {
+		t.Fatalf("error, err = %v", err)
+	}
+	t.Logf("rconn = %v", rconn)
+}
+
+// f.Truncate 将文件截取到指定大小
+func TestFileTruncate(t *testing.T) {
+	file, err := os.Create("test1.txt")
+	if err != nil {
+		t.Fatalf("Create file failed, err = %v", err)
+	}
+	defer file.Close()
+
+	fi, err := file.Stat()
+	if err != nil {
+		t.Fatalf("Stat file failed, err = %v", err)
+	}
+	t.Logf("file size = %v", fi.Size())
+
+	err = file.Truncate(6)
+	if err != nil {
+		t.Fatalf("Truncate file failed, err = %v", err)
+	}
+
+	fi, err = file.Stat()
+	if err != nil {
+		t.Fatalf("Stat file failed, err = %v", err)
+	}
+	t.Logf("Truncated file size = %v", fi.Size())
+}
+
+// f.Write 将 b 写入到文件
+// f.WriteAt 往文件的指定位置写入 b
+func TestFileWrite(t *testing.T) {
+	file, err := os.Create("test1.txt")
+	if err != nil {
+		t.Fatalf("Create file failed, err = %v", err)
+	}
+	defer file.Close()
+
+	_, err = file.Write([]byte("给你了三天，作业都没做完。"))
+	if err != nil {
+		t.Fatalf("Write to file failed, err = %v", err)
+	}
+
+	file.WriteString("明天再写不完，罚你站着听课3天。")
+	file.WriteAt([]byte("你听见没？"), 50)
+
+	file.Sync()
+}
+
+// os.FindProcess 通过进程 id 获取一个进程对象
+// Release 释放与 Process p 关联的所有资源，使其在将来无法使用。仅当未调用 Wait 时才需要调用 Release。
+// Signal 向 Process 发送信号。 Windows 上未实现发送中断。
+func TestOSProcess(t *testing.T) {
+	pid := os.Getpid()
+	t.Logf("pid = %v", pid)
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		t.Fatalf("Find process failed, err = %v", err)
+	}
+	t.Logf("p = %#v", p)
+
+	// p.Kill()
+	// p.Release()
+	// p.Signal(os.Kill)
+}
+
+func TestOSStartProcessWait(t *testing.T) {
+
+}
